@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Rally Computer</title>
+<style>
+  :root{
+    --panel: #c9cdd2;
+    --panel-dark: #9aa0a6;
+    --lcd-bg: #0a0a0a;
+    --lcd-white: #f2f2f2;
+    --lcd-yellow: #f5e94a;
+    --lcd-green: #57e06a;
+    --stage-red: #c81e1e;
+    --road-green: #1f9e3a;
+    --accent-blue: #1f3d99;
+  }
+  *{ box-sizing:border-box; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:#000; color:#111; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    touch-action:none;
+  }
+  #app{
+    position:fixed; inset:0;
+    display:flex; flex-direction:row;
+    background: linear-gradient(180deg,#dfe2e5,#b9bec3);
+  }
+  /* ---------- side buttons ---------- */
+  .side-buttons{
+    width:18%; max-width:110px; min-width:64px;
+    display:flex; flex-direction:column; gap:3%;
+    padding: 4% 3%;
+    background: linear-gradient(90deg,#8f9398,#c9cdd2 40%,#c9cdd2);
+  }
+  .side-btn{
+    flex:1; border:none; border-radius:10px; color:#fff; font-weight:700;
+    font-size:clamp(14px,4.2vw,26px); letter-spacing:2px;
+    writing-mode: vertical-rl; text-orientation:upright;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,0.35);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .side-btn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,0.25); }
+  .side-btn.stage{ background: radial-gradient(circle at 35% 20%, #ff6a6a, var(--stage-red)); }
+  .side-btn.road{ background: radial-gradient(circle at 35% 20%, #4be36a, var(--road-green)); }
+  .side-btn[disabled]{ opacity:0.45; }
+
+  /* ---------- main panel & screens ---------- */
+  .main-panel{ position:relative; flex:1; min-width:0; }
+  .screen{ position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.active{ display:flex; }
+
+  /* ===== MAIN screen ===== */
+  #screen-main{ background: linear-gradient(180deg,#e7e9eb,#b7bcc1); padding:2vw 2.5vw; gap:1.2vh; }
+  .top-bar{ display:flex; align-items:center; justify-content:space-between; height:5vh; }
+  .top-bar2{ display:flex; align-items:center; justify-content:flex-end; height:3.2vh; }
+  .battery{ display:flex; align-items:center; gap:6px; }
+  .battery-body{ width:34px; height:16px; border:2px solid #222; border-radius:3px; position:relative; }
+  .battery-nub{ width:3px; height:8px; background:#222; margin-left:1px; border-radius:0 2px 2px 0;}
+  .battery-fill{ position:absolute; top:1px; left:1px; bottom:1px; background:#2fbf3e; width:100%; border-radius:1px; }
+  .sig-line{ flex:1; height:3px; margin-left:8px; background:#111; position:relative; border-radius:2px; overflow:hidden; }
+  .sig-line-fill{ position:absolute; left:0; top:0; bottom:0; background:#2fbf3e; width:0%; }
+  .status-icons{ display:flex; gap:5vw; font-size:12px; font-weight:600; color:#333; }
+  .status-icons .item{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .dot{ width:22px; height:22px; border-radius:50%; border:2px solid #777; background:#d8d8d8; }
+  .dot.on{ background:#3bd15a; border-color:#1f8f3a; box-shadow:0 0 6px #3bd15a; }
+
+  .clock-box{
+    background:var(--lcd-bg); border-radius:8px; flex:0 0 26vh;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6), 0 2px 3px rgba(0,0,0,0.3);
+  }
+  .clock-box .val{ color:var(--lcd-white); font-weight:700; font-size:clamp(30px,11vw,90px); letter-spacing:2px; text-shadow:0 0 6px rgba(255,255,255,0.25); font-variant-numeric: tabular-nums; }
+
+  .mid-row{ display:flex; gap:2vw; flex:0 0 16vh; }
+  .remain-wrap{ flex:1; display:flex; flex-direction:column; }
+  .lbl{ font-size:clamp(11px,2.6vw,15px); color:#333; font-weight:600; margin-bottom:2px; }
+  .remain-box{
+    background:var(--lcd-bg); border-radius:8px; flex:1; display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6);
+  }
+  .remain-box .val{ color:var(--lcd-white); font-weight:700; font-size:clamp(24px,7.2vw,52px); font-variant-numeric: tabular-nums; }
+  .arrival-wrap{ width:30%; display:flex; flex-direction:column; }
+  .arrival-box{
+    background:var(--lcd-bg); border-radius:8px; flex:1; display:flex; align-items:center; justify-content:center;
+    border:2px solid #444;
+  }
+  .arrival-box .val{ color:var(--lcd-white); font-weight:700; font-size:clamp(18px,5vw,32px); font-variant-numeric: tabular-nums; }
+
+  .bottom-row{ display:flex; align-items:stretch; gap:2vw; flex:0 0 22vh; }
+  .main-spacer{ flex:1; }
+  .trip-toggle-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:20%; gap:1.2vh; }
+  .switch{ position:relative; display:inline-block; width:56px; height:30px; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; cursor:pointer; inset:0; background:#8b8f93; border-radius:30px; transition:.2s; box-shadow:inset 0 1px 3px rgba(0,0,0,0.4); }
+  .slider:before{ position:absolute; content:""; height:24px; width:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,0.4); }
+  input:checked + .slider{ background:linear-gradient(180deg,#4be36a,var(--road-green)); }
+  input:checked + .slider:before{ transform:translateX(26px); }
+
+  .trip-box{
+    background:var(--lcd-bg); border-radius:8px; flex:1; display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6);
+  }
+  .trip-box .val{ color:var(--lcd-yellow); font-weight:700; font-size:clamp(30px,10vw,72px); font-variant-numeric: tabular-nums; }
+  .c-btn{
+    width:20%; border:none; border-radius:8px; background:linear-gradient(180deg,#fff,#dcdcdc);
+    color:var(--accent-blue); font-size:clamp(24px,7vw,44px); font-weight:800;
+    box-shadow:0 3px 0 #9a9a9a, inset 0 1px 2px rgba(255,255,255,0.8);
+  }
+  .c-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #9a9a9a; }
+
+  .list-link{
+    background:rgba(0,0,0,0.08); border:1px solid #8a8f94;
+    border-radius:14px; padding:3px 12px; font-size:12px; font-weight:700; color:#333;
+  }
+
+  /* ===== SETUP screen ===== */
+  #screen-setup{ background: linear-gradient(180deg,#eef0f2,#c3c8cc); padding:3vh 3vw; justify-content:space-between; }
+  .setup-close{ position:absolute; top:1.5vh; left:2.5vw; font-size:22px; color:#555; background:none; border:none; font-weight:700; }
+  .setup-row{ display:flex; align-items:center; gap:3vw; margin-bottom:2vh; }
+  .setup-row .row-label{ width:22%; font-size:clamp(14px,3.4vw,20px); font-weight:600; color:#222; line-height:1.25; }
+  .stepper-group{ display:flex; gap:2.2vw; align-items:center; }
+  .stepper{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .stepper .tri{ width:0; height:0; border-left:14px solid transparent; border-right:14px solid transparent; cursor:pointer; }
+  .stepper .tri.up{ border-bottom:16px solid #6b6f73; }
+  .stepper .tri.down{ border-top:16px solid #6b6f73; }
+  .stepper .digit{ font-size:clamp(30px,7vw,56px); font-weight:700; color:#111; min-width:1.4em; text-align:center; font-variant-numeric: tabular-nums; }
+  .stepper .unit{ font-size:11px; color:#555; font-weight:600; }
+  .setup-footer{ display:flex; align-items:center; justify-content:space-between; padding-top:1.5vh; border-top:1px solid #9aa; }
+  .status-text{ font-size:clamp(14px,3.6vw,20px); color:#222; }
+  .done-btn{
+    border:none; border-radius:8px; background:linear-gradient(180deg,#7dff8a,#33c94a);
+    color:#1a3d1a; font-weight:800; font-size:clamp(16px,4vw,24px); padding:1.6vh 6vw;
+    box-shadow:0 3px 0 #1f8f2c, inset 0 1px 2px rgba(255,255,255,0.6);
+  }
+  .done-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #1f8f2c; }
+
+  /* ===== RUNNING screen ===== */
+  #screen-running{ background:#111 url('') ; background-color:#141414; justify-content:flex-start; padding:2.5vh 3vw; position:relative; }
+  .fin-line{ background:#000; color:#eee; font-size:clamp(16px,4.4vw,26px); font-weight:600; padding:1.2vh 3vw; border-radius:4px; display:inline-block; }
+  .run-mid{ display:flex; align-items:center; gap:2vw; margin-top:2.5vh; flex:1; }
+  .adjust-col{ display:flex; flex-direction:column; align-items:center; gap:1.6vh; width:14%; }
+  .adjust-col .tri{ width:0; height:0; border-left:16px solid transparent; border-right:16px solid transparent; }
+  .adjust-col .tri.up{ border-bottom:22px solid #ddd; }
+  .adjust-col .tri.down{ border-top:22px solid #ddd; }
+  .adjust-col .cap{ color:#ccc; font-size:11px; font-weight:700; }
+  .big-time-wrap{ flex:1; }
+  .big-time{
+    background:var(--accent-blue); color:#fff; font-weight:800; text-align:center;
+    font-size:clamp(38px,13vw,110px); font-style:italic; border-radius:6px; padding:2vh 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .big-time.precount{ background:#c81e1e; font-style:normal; }
+  .run-hint{ color:#aaa; text-align:center; font-size:clamp(13px,3.2vw,18px); margin-top:1.5vh; }
+  .run-footer{ display:flex; justify-content:flex-end; padding:2vh 0 0; }
+
+  /* ===== LIST screen ===== */
+  #screen-list{ background:#eef0f2; padding:2.5vh 3vw; }
+  .list-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2vh; }
+  .list-header h2{ margin:0; font-size:clamp(18px,4.6vw,26px); }
+  .back-btn{ border:none; background:#444; color:#fff; border-radius:6px; padding:1.2vh 3vw; font-weight:700; font-size:14px; }
+  .clear-all-btn{ border:none; background:#b23b3b; color:#fff; border-radius:6px; padding:1vh 2.4vw; font-weight:700; font-size:12px; }
+  .list-scroll{ flex:1; overflow-y:auto; }
+  .rec-row{ display:flex; align-items:center; justify-content:space-between; background:#fff; border-radius:8px; padding:1.6vh 3vw; margin-bottom:1.2vh; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+  .rec-left{ display:flex; flex-direction:column; }
+  .rec-no{ font-size:12px; color:#777; font-weight:700; }
+  .rec-time{ font-size:clamp(20px,5.4vw,30px); font-weight:800; color:#1f3d99; font-variant-numeric: tabular-nums; }
+  .rec-date{ font-size:11px; color:#999; }
+  .del-btn{ border:none; background:#eee; color:#b23b3b; font-weight:800; border-radius:50%; width:34px; height:34px; font-size:16px; }
+  .empty-msg{ color:#888; text-align:center; margin-top:6vh; font-size:15px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="side-buttons">
+    <button id="btnStage" class="side-btn stage">STAGE</button>
+    <button id="btnRoad" class="side-btn road">ROAD</button>
+  </div>
+
+  <div class="main-panel">
+
+    <!-- MAIN -->
+    <div id="screen-main" class="screen active">
+      <div class="top-bar">
+        <div class="battery">
+          <div class="battery-body"><div class="battery-fill" id="batteryFill"></div></div>
+          <div class="battery-nub"></div>
+          <div class="sig-line"><div class="sig-line-fill" id="sigFill"></div></div>
+        </div>
+        <div class="status-icons">
+          <div class="item"><span>GPS</span><div class="dot" id="gpsDot"></div></div>
+          <div class="item"><span>BT</span><div class="dot" id="btDot"></div></div>
+        </div>
+      </div>
+      <div class="top-bar2">
+        <button class="list-link" id="btnOpenList">Time List ▸</button>
+      </div>
+
+      <div class="clock-box"><div class="val" id="clockVal">--:--:--</div></div>
+
+      <div class="mid-row">
+        <div class="remain-wrap">
+          <div class="lbl">Remain</div>
+          <div class="remain-box"><div class="val" id="remainVal">--:--:--</div></div>
+        </div>
+        <div class="arrival-wrap">
+          <div class="lbl">Arrival Time</div>
+          <div class="arrival-box"><div class="val" id="arrivalVal">--:--</div></div>
+        </div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="trip-toggle-wrap">
+          <div class="lbl">Trip - km</div>
+          <label class="switch"><input type="checkbox" id="tripToggle"><span class="slider"></span></label>
+        </div>
+        <div class="trip-box"><div class="val" id="tripVal">0.000</div></div>
+        <button class="c-btn" id="btnClear">C</button>
+      </div>
+      <div class="main-spacer"></div>
+    </div>
+
+    <!-- SETUP -->
+    <div id="screen-setup" class="screen">
+      <button class="setup-close" id="btnSetupClose">✕</button>
+      <div>
+        <div class="setup-row" id="rowStart">
+          <div class="row-label">Stage<br>start time</div>
+          <div class="stepper-group" id="startSteppers"></div>
+        </div>
+        <div class="setup-row" id="rowTc">
+          <div class="row-label">Next TC<br>target time</div>
+          <div class="stepper-group" id="tcSteppers"></div>
+        </div>
+      </div>
+      <div class="setup-footer">
+        <div class="status-text" id="setupStatusText">Stage stand by</div>
+        <button class="done-btn" id="btnSetupDone">Done</button>
+      </div>
+    </div>
+
+    <!-- RUNNING -->
+    <div id="screen-running" class="screen">
+      <div class="fin-line">Fin <span id="finVal">00:00:00.0</span></div>
+      <div class="run-mid">
+        <div class="adjust-col">
+          <div class="cap">Sec</div>
+          <div class="tri up" id="secUp"></div>
+          <div class="tri down" id="secDown"></div>
+        </div>
+        <div class="big-time-wrap">
+          <div class="big-time" id="bigTimeVal">READY</div>
+        </div>
+        <div class="adjust-col">
+          <div class="cap">0.1s</div>
+          <div class="tri up" id="tenthUp"></div>
+          <div class="tri down" id="tenthDown"></div>
+        </div>
+      </div>
+      <div class="run-hint" id="runHint">タップして計測終了</div>
+      <div class="run-footer">
+        <button class="done-btn" id="btnRunDone" style="display:none;">Done</button>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div id="screen-list" class="screen">
+      <div class="list-header">
+        <h2>Time List</h2>
+        <div style="display:flex; gap:8px;">
+          <button class="clear-all-btn" id="btnClearAll">全削除</button>
+          <button class="back-btn" id="btnListBack">← Back</button>
+        </div>
+      </div>
+      <div class="list-scroll" id="listScroll"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- utils ---------------- */
+  const $ = id => document.getElementById(id);
+  const pad2 = n => String(Math.max(0,Math.floor(n))).padStart(2,'0');
+
+  function fmtClock(d){ return pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds()); }
+  function fmtHM(d){ return pad2(d.getHours())+':'+pad2(d.getMinutes()); }
+  function fmtDurationHMS(totalSec){
+    totalSec = Math.max(0, Math.round(totalSec));
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    return pad2(h)+':'+pad2(m)+':'+pad2(s);
+  }
+  // ms -> H:MM:SS.t  (hours omitted if 0)
+  function fmtStageTime(ms){
+    ms = Math.max(0, Math.round(ms));
+    const totalTenths = Math.round(ms/100);
+    const tenths = totalTenths % 10;
+    let totalSec = Math.floor(totalTenths/10);
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    let str = (h>0? pad2(h)+':' : '') + pad2(m)+':'+pad2(s)+'.'+tenths;
+    return str;
+  }
+  function haversineKm(lat1,lon1,lat2,lon2){
+    const R=6371;
+    const dLat=(lat2-lat1)*Math.PI/180;
+    const dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+
+  /* ---------------- state ---------------- */
+  const state = {
+    screen:'main',
+    setupMode:null,           // 'stage' | 'road'
+    stageStartTime:null,      // Date
+    tcTargetTime:null,        // Date
+    runPhase:null,            // null | 'precount' | 'running' | 'stopped'
+    runStartPerf:null,        // performance.now() at actual stage start
+    frozenMs:0,
+    stageCounter:0,
+    records:[],               // {no,timeMs,savedAt}
+    tripKm:0,
+    tripOn:false,
+    lastPos:null,
+    gpsOk:false,
+    audioCtx:null,
+    lastPreSecond:null,
+    setupField:{ sh:0, sm:0, ss:0, th:0, tm:0, ts:0 }
+  };
+
+  try{
+    const raw = localStorage.getItem('rc_records');
+    if(raw) state.records = JSON.parse(raw);
+    const cnt = localStorage.getItem('rc_counter');
+    if(cnt) state.stageCounter = parseInt(cnt,10)||0;
+  }catch(e){}
+
+  function persist(){
+    try{
+      localStorage.setItem('rc_records', JSON.stringify(state.records));
+      localStorage.setItem('rc_counter', String(state.stageCounter));
+    }catch(e){}
+  }
+
+  /* ---------------- screen switching ---------------- */
+  function showScreen(name){
+    state.screen = name;
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $('screen-'+name).classList.add('active');
+    $('btnStage').disabled = (name==='running');
+    $('btnRoad').disabled = (name==='running');
+  }
+
+  /* ---------------- audio (best effort) ---------------- */
+  function ensureAudio(){
+    if(!state.audioCtx){
+      try{ state.audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+    }
+    if(state.audioCtx && state.audioCtx.state==='suspended'){
+      state.audioCtx.resume().catch(()=>{});
+    }
+  }
+  function beep(freq, durMs){
+    if(!state.audioCtx) return;
+    try{
+      const ctx = state.audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = 'square';
+      gain.gain.value = 0.15;
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start();
+      setTimeout(()=>{ osc.stop(); }, durMs);
+    }catch(e){}
+  }
+  document.addEventListener('touchstart', ensureAudio, {once:true, passive:true});
+  document.addEventListener('mousedown', ensureAudio, {once:true});
+
+  /* ---------------- wake lock (best effort) ---------------- */
+  let wakeLock = null;
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); }
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible') requestWakeLock();
+  });
+  requestWakeLock();
+
+  /* ---------------- setup screen (steppers) ---------------- */
+  function buildStepper(container, key, max, label){
+    const wrap = document.createElement('div');
+    wrap.className = 'stepper';
+    const up = document.createElement('div'); up.className='tri up';
+    const digit = document.createElement('div'); digit.className='digit'; digit.textContent = pad2(state.setupField[key]);
+    const down = document.createElement('div'); down.className='tri down';
+    const unit = document.createElement('div'); unit.className='unit'; unit.textContent = label;
+    up.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]+1) % (max+1); digit.textContent = pad2(state.setupField[key]); });
+    down.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]-1+ (max+1)) % (max+1); digit.textContent = pad2(state.setupField[key]); });
+    wrap.appendChild(up); wrap.appendChild(digit); wrap.appendChild(down); wrap.appendChild(unit);
+    container.appendChild(wrap);
+  }
+
+  function renderSetupSteppers(){
+    const startC = $('startSteppers'); startC.innerHTML='';
+    const tcC = $('tcSteppers'); tcC.innerHTML='';
+    buildStepper(startC,'sh',23,'H');
+    buildStepper(startC,'sm',59,'M');
+    buildStepper(startC,'ss',59,'S');
+    buildStepper(tcC,'th',23,'H');
+    buildStepper(tcC,'tm',59,'M');
+    buildStepper(tcC,'ts',59,'S');
+  }
+
+  function openSetup(mode){
+    state.setupMode = mode;
+    const now = new Date();
+    // defaults
+    let startDefault = new Date(now.getTime() + 60000); // +1 min, seconds zeroed
+    startDefault.setSeconds(0,0);
+    let tcDefault = new Date(startDefault.getTime() + 3*60000);
+
+    if(mode==='stage'){
+      $('rowStart').style.display='flex';
+      state.setupField.sh = startDefault.getHours();
+      state.setupField.sm = startDefault.getMinutes();
+      state.setupField.ss = startDefault.getSeconds();
+      state.setupField.th = tcDefault.getHours();
+      state.setupField.tm = tcDefault.getMinutes();
+      state.setupField.ts = tcDefault.getSeconds();
+      $('setupStatusText').textContent = 'Stage stand by';
+    } else {
+      $('rowStart').style.display='none';
+      let roadTc = new Date(now.getTime() + 5*60000);
+      roadTc.setSeconds(0,0);
+      state.setupField.th = roadTc.getHours();
+      state.setupField.tm = roadTc.getMinutes();
+      state.setupField.ts = roadTc.getSeconds();
+      $('setupStatusText').textContent = 'Road section';
+    }
+    renderSetupSteppers();
+    showScreen('setup');
+  }
+
+  function resolveTimeToday(h,m,s){
+    const now = new Date();
+    let d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s, 0);
+    if(d.getTime() <= now.getTime()) d = new Date(d.getTime() + 24*3600*1000);
+    return d;
+  }
+
+  $('btnSetupClose').addEventListener('click', ()=>{ showScreen('main'); });
+
+  $('btnSetupDone').addEventListener('click', ()=>{
+    const f = state.setupField;
+    const tc = resolveTimeToday(f.th,f.tm,f.ts);
+    if(state.setupMode==='stage'){
+      let start = resolveTimeToday(f.sh,f.sm,f.ss);
+      // ensure TC target is after start; if not, push TC to next day
+      let tcFinal = tc;
+      if(tcFinal.getTime() <= start.getTime()) tcFinal = new Date(tcFinal.getTime() + 24*3600*1000);
+      state.stageStartTime = start;
+      state.tcTargetTime = tcFinal;
+      state.runPhase = null;
+    } else {
+      state.tcTargetTime = tc;
+      state.stageStartTime = null;
+      state.runPhase = null;
+    }
+    showScreen('main');
+  });
+
+  $('btnStage').addEventListener('click', ()=>{ ensureAudio(); openSetup('stage'); });
+  $('btnRoad').addEventListener('click', ()=>{ ensureAudio(); openSetup('road'); });
+
+  /* ---------------- trip meter / GPS ---------------- */
+  function setGpsDot(on){ state.gpsOk = on; $('gpsDot').classList.toggle('on', on); $('sigFill').style.width = on? '100%':'0%'; }
+
+  function startGeo(){
+    if(!('geolocation' in navigator)){ setGpsDot(false); return; }
+    navigator.geolocation.watchPosition(pos=>{
+      setGpsDot(true);
+      const { latitude, longitude } = pos.coords;
+      if(state.tripOn && state.lastPos){
+        const d = haversineKm(state.lastPos.lat, state.lastPos.lon, latitude, longitude);
+        if(isFinite(d) && d < 1){ state.tripKm += d; } // ignore obvious GPS jump errors
+      }
+      state.lastPos = { lat: latitude, lon: longitude };
+    }, err=>{
+      setGpsDot(false);
+    }, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+  }
+  try{ startGeo(); }catch(e){ setGpsDot(false); }
+
+  $('tripToggle').addEventListener('change', (e)=>{
+    state.tripOn = e.target.checked;
+    if(!state.tripOn) state.lastPos = null;
+  });
+
+  $('btnClear').addEventListener('click', ()=>{
+    state.tripKm = 0;
+    $('tripVal').textContent = '0.000';
+  });
+
+  /* ---------------- battery (best effort) ---------------- */
+  if(navigator.getBattery){
+    navigator.getBattery().then(bat=>{
+      const upd = ()=>{ $('batteryFill').style.width = Math.round(bat.level*100)+'%'; };
+      upd();
+      bat.addEventListener('levelchange', upd);
+    }).catch(()=>{});
+  }
+
+  /* ---------------- running / stopwatch ---------------- */
+  function enterPrecount(){
+    state.runPhase = 'precount';
+    state.lastPreSecond = null;
+    showScreen('running');
+    $('finVal').textContent = fmtStageTime(state.tcTargetTime.getTime() - state.stageStartTime.getTime());
+    $('runHint').textContent = 'まもなくスタート';
+    $('btnRunDone').style.display='none';
+  }
+
+  function enterRunning(){
+    state.runPhase = 'running';
+    state.runStartPerf = performance.now();
+    // auto trip ON
+    state.tripOn = true;
+    state.lastPos = null;
+    $('tripToggle').checked = true;
+    $('runHint').textContent = 'タップして計測終了';
+    $('btnRunDone').style.display='none';
+  }
+
+  function stopRunning(){
+    if(state.runPhase !== 'running') return;
+    state.frozenMs = performance.now() - state.runStartPerf;
+    state.runPhase = 'stopped';
+    $('runHint').textContent = '▲▼で調整し Done で確定';
+    $('btnRunDone').style.display='inline-block';
+    beep(1200,120);
+  }
+
+  $('screen-running').addEventListener('click', (e)=>{
+    if(state.runPhase==='running' && e.target.id !== 'btnRunDone'){
+      stopRunning();
+    }
+  });
+
+  $('secUp').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs += 1000; }});
+  $('secDown').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs = Math.max(0,state.frozenMs-1000); }});
+  $('tenthUp').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs += 100; }});
+  $('tenthDown').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs = Math.max(0,state.frozenMs-100); }});
+
+  $('btnRunDone').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(state.runPhase !== 'stopped') return;
+    state.stageCounter += 1;
+    state.records.unshift({ no: state.stageCounter, timeMs: Math.round(state.frozenMs), savedAt: new Date().toISOString() });
+    persist();
+    state.runPhase = null;
+    state.stageStartTime = null; // consumed; Remain now counts to tcTargetTime
+    showScreen('main');
+  });
+
+  /* ---------------- list screen ---------------- */
+  function renderList(){
+    const scroll = $('listScroll');
+    scroll.innerHTML = '';
+    if(state.records.length===0){
+      const p = document.createElement('div');
+      p.className='empty-msg';
+      p.textContent = '記録はまだありません';
+      scroll.appendChild(p);
+      return;
+    }
+    state.records.forEach(rec=>{
+      const row = document.createElement('div'); row.className='rec-row';
+      const left = document.createElement('div'); left.className='rec-left';
+      const no = document.createElement('div'); no.className='rec-no'; no.textContent = 'STAGE '+rec.no;
+      const time = document.createElement('div'); time.className='rec-time'; time.textContent = fmtStageTime(rec.timeMs);
+      const date = document.createElement('div'); date.className='rec-date';
+      try{ date.textContent = new Date(rec.savedAt).toLocaleString(); }catch(e){ date.textContent=''; }
+      left.appendChild(no); left.appendChild(time); left.appendChild(date);
+      const del = document.createElement('button'); del.className='del-btn'; del.textContent='✕';
+      del.addEventListener('click', ()=>{
+        state.records = state.records.filter(r=>r!==rec);
+        persist();
+        renderList();
+      });
+      row.appendChild(left); row.appendChild(del);
+      scroll.appendChild(row);
+    });
+  }
+
+  $('btnOpenList').addEventListener('click', ()=>{ renderList(); showScreen('list'); });
+  $('btnListBack').addEventListener('click', ()=>{ showScreen('main'); });
+  $('btnClearAll').addEventListener('click', ()=>{
+    state.records = [];
+    persist();
+    renderList();
+  });
+
+  /* ---------------- main tick loop ---------------- */
+  function tick(){
+    const now = new Date();
+    $('clockVal').textContent = fmtClock(now);
+
+    // determine current countdown target
+    let target = null;
+    if(state.stageStartTime && (state.runPhase===null)) target = state.stageStartTime;
+    else if(state.tcTargetTime) target = state.tcTargetTime;
+
+    if(target){
+      const remainSec = (target.getTime() - now.getTime())/1000;
+      $('remainVal').textContent = fmtDurationHMS(remainSec);
+      $('arrivalVal').textContent = fmtHM(target);
+    } else {
+      $('remainVal').textContent = '--:--:--';
+      $('arrivalVal').textContent = '--:--';
+    }
+
+    // stage state machine (only relevant while on main screen waiting, or already in running screen)
+    if(state.stageStartTime && state.runPhase===null){
+      const msToStart = state.stageStartTime.getTime() - now.getTime();
+      if(msToStart <= 5000 && msToStart > -200){
+        enterPrecount();
+      }
+    }
+    if(state.runPhase==='precount'){
+      const msToStart = state.stageStartTime.getTime() - now.getTime();
+      const secLeft = Math.ceil(msToStart/1000);
+      const bigEl = $('bigTimeVal');
+      bigEl.classList.add('precount');
+      if(secLeft >= 1){
+        if(state.lastPreSecond !== secLeft){
+          state.lastPreSecond = secLeft;
+          beep(800,100);
+        }
+        bigEl.textContent = String(secLeft);
+      }
+      if(msToStart <= 0){
+        bigEl.classList.remove('precount');
+        beep(1500,200);
+        enterRunning();
+      }
+    }
+    if(state.runPhase==='running'){
+      const elapsed = performance.now() - state.runStartPerf;
+      $('bigTimeVal').textContent = fmtStageTime(elapsed);
+    }
+    if(state.runPhase==='stopped'){
+      $('bigTimeVal').textContent = fmtStageTime(state.frozenMs);
+    }
+
+    // trip display
+    $('tripVal').textContent = state.tripKm.toFixed(3);
+    $('tripToggle').checked = state.tripOn;
+
+    requestAnimationFrame(tickThrottled);
+  }
+  let lastTickTs = 0;
+  function tickThrottled(ts){
+    if(!lastTickTs || ts - lastTickTs >= 90){
+      lastTickTs = ts;
+      tick();
+    } else {
+      requestAnimationFrame(tickThrottled);
+    }
+  }
+  requestAnimationFrame(tickThrottled);
+
+  /* ---------------- debug/test hook (does not affect normal use) ---------------- */
+  window.__RC_DEBUG__ = {
+    getState: ()=>({ screen: state.screen, runPhase: state.runPhase, records: state.records, tripKm: state.tripKm,
+                      stageStartTime: state.stageStartTime, tcTargetTime: state.tcTargetTime }),
+    setTimesInMs: (startMsFromNow, tcMsFromNow)=>{
+      const now = Date.now();
+      state.stageStartTime = startMsFromNow!=null ? new Date(now+startMsFromNow) : null;
+      state.tcTargetTime = tcMsFromNow!=null ? new Date(now+tcMsFromNow) : null;
+      state.runPhase = null;
+      showScreen('main');
+    }
+  };
+
+})();
+</script>
+</body>
+</html>

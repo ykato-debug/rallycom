@@ -20,12 +20,14 @@
     touch-action:none;
   }
   body{
-    display:flex; align-items:center; justify-content:center;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
+  #rotWrap{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+  }
   /* App is letterboxed by height only while the screen is wide (landscape): centered horizontally
-     with black bars on the sides so a phone's rounded corners / speaker cutout stay clear.
-     In portrait (narrow screens) it simply fills the width - see media query below. */
+     with black bars on the sides so a phone's rounded corners / speaker cutout stay clear. */
   #app{
     position:relative;
     height:100%; width:100%;
@@ -36,6 +38,23 @@
     background: linear-gradient(180deg,#dfe2e5,#b9bec3);
     box-shadow: 0 0 24px rgba(0,0,0,0.7);
     border-radius: 1.2vh;
+  }
+  /* There is no reliable, direction-safe way for a plain web page to force landscape on iOS
+     Safari (no orientation-lock API there, and blindly CSS-rotating the page guesses which way
+     the phone will be turned and can come out upside-down). Instead, when the browser reports
+     portrait we hide the app and show a clear "please rotate" prompt; screen.orientation.lock()
+     is still attempted in script for browsers that DO support it (e.g. Android). */
+  #rotatePrompt{ display:none; }
+  @media (orientation: portrait){
+    #app{ display:none; }
+    #rotatePrompt{
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3vh;
+      width:100%; height:100%; text-align:center; padding:6vw;
+      color:#eee; background:#141414;
+    }
+    #rotatePrompt .icon{ font-size:14vw; animation: rotHint 1.6s ease-in-out infinite; }
+    #rotatePrompt .msg{ font-size:5vw; font-weight:600; line-height:1.6; }
+    @keyframes rotHint{ 0%,100%{ transform:rotate(0deg);} 50%{ transform:rotate(90deg);} }
   }
   /* All interior sizing below uses vmin (the smaller of width/height) with px floors/ceilings via
      clamp(), so nothing overflows if the phone ends up in portrait, and everything scales up
@@ -124,47 +143,64 @@
   .c-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #9a9a9a; }
 
   /* ===== SETUP screen ===== */
-  #screen-setup{ background: linear-gradient(180deg,#eef0f2,#c3c8cc); padding:2.4vmin 2.4vmin; justify-content:space-between; }
-  .setup-close{ position:absolute; top:1.2vmin; left:1.6vmin; font-size:clamp(20px,4.4vmin,30px); color:#555; background:none; border:none; font-weight:700; padding:1vmin; }
-  .setup-row{ display:flex; align-items:center; gap:2.6vmin; margin-bottom:2.4vmin; }
-  .setup-row .row-label{ width:26%; font-size:clamp(13px,3.4vmin,22px); font-weight:600; color:#222; line-height:1.25; }
-  .stepper-group{ display:flex; gap:2.4vmin; align-items:center; }
-  .stepper{ display:flex; flex-direction:column; align-items:center; gap:0.2vmin; }
-  .stepper .tri{
-    width:0; height:0; border-left:2vmin solid transparent; border-right:2vmin solid transparent; cursor:pointer;
-    padding:1.6vmin 0.4vmin;
+  #screen-setup{ background: linear-gradient(180deg,#eef0f2,#c3c8cc); padding:2vmin 3vmin; justify-content:space-between; }
+  .setup-close{ position:absolute; top:1vmin; left:1.4vmin; font-size:clamp(22px,4.8vmin,32px); color:#555; background:none; border:none; font-weight:700; padding:1.4vmin 1.8vmin; }
+  .setup-body{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:4vmin; }
+  .setup-row{ display:flex; align-items:center; gap:3vmin; }
+  .setup-row .row-label{ width:24%; font-size:clamp(15px,3.8vmin,26px); font-weight:700; color:#222; line-height:1.25; }
+  .stepper-group{ display:flex; gap:3.2vmin; align-items:center; }
+  .stepper{ display:flex; flex-direction:column; align-items:center; gap:0.8vmin; }
+  .stepper .tribtn{
+    width:clamp(46px,10.5vmin,76px); height:clamp(38px,8.5vmin,60px);
+    display:flex; align-items:center; justify-content:center;
+    background:#dde0e3; border-radius:clamp(8px,1.8vmin,14px);
+    box-shadow:0 3px 0 rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.6);
+    cursor:pointer;
   }
-  .stepper .tri.up{ border-bottom:2.2vmin solid #6b6f73; }
-  .stepper .tri.down{ border-top:2.2vmin solid #6b6f73; }
-  .stepper .digit{ font-size:clamp(24px,8.4vmin,60px); font-weight:700; color:#111; min-width:1.4em; text-align:center; font-variant-numeric: tabular-nums; }
-  .stepper .unit{ font-size:clamp(10px,2vmin,14px); color:#555; font-weight:600; }
-  .setup-footer{ display:flex; align-items:center; justify-content:space-between; padding-top:1.6vmin; border-top:1px solid #9aa; }
+  .stepper .tribtn:active{ background:#c6cacd; transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.18); }
+  .stepper .tri{ width:0; height:0; border-left:2.4vmin solid transparent; border-right:2.4vmin solid transparent; pointer-events:none; }
+  .stepper .tri.up{ border-bottom:2.6vmin solid #444; }
+  .stepper .tri.down{ border-top:2.6vmin solid #444; }
+  .stepper .digit{
+    font-size:clamp(30px,11vmin,76px); font-weight:800; color:#111; min-width:1.3em; text-align:center;
+    font-variant-numeric: tabular-nums; background:#fff; border-radius:clamp(6px,1.4vmin,10px);
+    padding:0.4vmin 0; box-shadow:inset 0 0 0 2px #c3c8cc;
+  }
+  .stepper .unit{ font-size:clamp(11px,2.3vmin,16px); color:#555; font-weight:700; }
+  .setup-footer{ display:flex; align-items:center; justify-content:space-between; padding-top:1.6vmin; border-top:1px solid #9aa; flex:0 0 auto; }
   .status-text{ font-size:clamp(13px,3vmin,22px); color:#222; }
   .done-btn{
     border:none; border-radius:clamp(6px,1.4vmin,12px); background:linear-gradient(180deg,#7dff8a,#33c94a);
-    color:#1a3d1a; font-weight:800; font-size:clamp(16px,3.8vmin,26px); padding:1.8vmin 4.4vmin;
+    color:#1a3d1a; font-weight:800; font-size:clamp(18px,4.4vmin,30px); padding:2vmin 5vmin;
     box-shadow:0 3px 0 #1f8f2c, inset 0 1px 2px rgba(255,255,255,0.6);
   }
   .done-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #1f8f2c; }
 
   /* ===== RUNNING screen ===== */
-  #screen-running{ background-color:#141414; justify-content:flex-start; padding:2vmin 2.4vmin; position:relative; }
-  .fin-line{ background:#000; color:#eee; font-size:clamp(14px,3.2vmin,24px); font-weight:600; padding:1.2vmin 2.4vmin; border-radius:0.6vmin; display:inline-block; }
-  .run-mid{ display:flex; align-items:center; gap:1.8vmin; margin-top:2.2vmin; flex:1; min-height:0; }
-  .adjust-col{ display:flex; flex-direction:column; align-items:center; gap:1.8vmin; width:14%; }
-  .adjust-col .tri{ width:0; height:0; border-left:2.4vmin solid transparent; border-right:2.4vmin solid transparent; cursor:pointer; padding:1.8vmin 0.4vmin; }
-  .adjust-col .tri.up{ border-bottom:3vmin solid #ddd; }
-  .adjust-col .tri.down{ border-top:3vmin solid #ddd; }
+  #screen-running{ background-color:#141414; justify-content:flex-start; padding:1.6vmin 2vmin; position:relative; }
+  .fin-line{ background:#000; color:#eee; font-size:clamp(13px,2.8vmin,20px); font-weight:600; padding:1vmin 2.2vmin; border-radius:0.6vmin; display:inline-block; }
+  .run-mid{ display:flex; align-items:center; gap:1.4vmin; margin-top:1.6vmin; flex:1; min-height:0; }
+  .adjust-col{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2.4vmin; width:9%; }
+  .adjust-col .tribtn{
+    width:clamp(38px,8vmin,58px); height:clamp(34px,7vmin,52px);
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,0.12); border-radius:clamp(6px,1.4vmin,10px); cursor:pointer;
+  }
+  .adjust-col .tribtn:active{ background:rgba(255,255,255,0.25); }
+  .adjust-col .tri{ width:0; height:0; border-left:2vmin solid transparent; border-right:2vmin solid transparent; pointer-events:none; }
+  .adjust-col .tri.up{ border-bottom:2.4vmin solid #eee; }
+  .adjust-col .tri.down{ border-top:2.4vmin solid #eee; }
   .adjust-col .cap{ color:#ccc; font-size:clamp(10px,2vmin,15px); font-weight:700; }
-  .big-time-wrap{ flex:1; min-width:0; }
+  .big-time-wrap{ flex:1; min-width:0; height:100%; display:flex; align-items:center; }
   .big-time{
+    width:100%;
     background:var(--accent-blue); color:#fff; font-weight:800; text-align:center;
-    font-size:clamp(32px,15vmin,110px); font-style:italic; border-radius:0.8vmin; padding:2.2vmin 0;
+    font-size:clamp(40px,24vmin,190px); font-style:italic; border-radius:1vmin; padding:3vmin 0;
     font-variant-numeric: tabular-nums; white-space:nowrap; overflow:hidden;
   }
   .big-time.precount{ background:#c81e1e; font-style:normal; }
-  .run-hint{ color:#aaa; text-align:center; font-size:clamp(12px,2.6vmin,19px); margin-top:1.6vmin; }
-  .run-footer{ display:flex; justify-content:flex-end; padding:1.8vmin 0 0; }
+  .run-hint{ color:#aaa; text-align:center; font-size:clamp(12px,2.6vmin,19px); margin-top:1.4vmin; }
+  .run-footer{ display:flex; justify-content:flex-end; padding:1.4vmin 0 0; }
 
   /* ===== LIST screen ===== */
   #screen-list{ background:#eef0f2; padding:2.2vmin 2.4vmin; }
@@ -180,15 +216,14 @@
   .rec-date{ font-size:clamp(10px,2vmin,14px); color:#999; }
   .del-btn{ border:none; background:#eee; color:#b23b3b; font-weight:800; border-radius:50%; width:clamp(34px,7vmin,46px); height:clamp(34px,7vmin,46px); font-size:clamp(14px,2.6vmin,19px); flex-shrink:0; }
   .empty-msg{ color:#888; text-align:center; margin-top:5vmin; font-size:clamp(13px,2.6vmin,18px); }
-
-  /* Portrait fallback: same structure, just no letterbox needed since width is already the
-     limiting dimension - the clamp()s above already keep every element from overflowing. */
-  @media (orientation: portrait){
-    #app{ max-width:100%; }
-  }
 </style>
 </head>
 <body>
+<div id="rotWrap">
+<div id="rotatePrompt">
+  <div class="icon">📱</div>
+  <div class="msg">端末を横向きにしてください<br><span style="font-size:0.7em; font-weight:400; opacity:0.8;">画面回転ロックがオンの場合は解除してください</span></div>
+</div>
 <div id="app">
 
   <div class="side-buttons">
@@ -230,7 +265,7 @@
     <!-- SETUP -->
     <div id="screen-setup" class="screen">
       <button class="setup-close" id="btnSetupClose">✕</button>
-      <div>
+      <div class="setup-body">
         <div class="setup-row" id="rowStart">
           <div class="row-label">Stage<br>start time</div>
           <div class="stepper-group" id="startSteppers"></div>
@@ -252,16 +287,16 @@
       <div class="run-mid">
         <div class="adjust-col">
           <div class="cap">Sec</div>
-          <div class="tri up" id="secUp"></div>
-          <div class="tri down" id="secDown"></div>
+          <div class="tribtn" id="secUp"><div class="tri up"></div></div>
+          <div class="tribtn" id="secDown"><div class="tri down"></div></div>
         </div>
         <div class="big-time-wrap">
           <div class="big-time" id="bigTimeVal">READY</div>
         </div>
         <div class="adjust-col">
           <div class="cap">0.1s</div>
-          <div class="tri up" id="tenthUp"></div>
-          <div class="tri down" id="tenthDown"></div>
+          <div class="tribtn" id="tenthUp"><div class="tri up"></div></div>
+          <div class="tribtn" id="tenthDown"><div class="tri down"></div></div>
         </div>
       </div>
       <div class="run-hint" id="runHint">タップして計測終了</div>
@@ -283,6 +318,7 @@
     </div>
 
   </div>
+</div>
 </div>
 
 <script>
@@ -392,6 +428,22 @@
   document.addEventListener('touchstart', ensureAudio, {once:true, passive:true});
   document.addEventListener('mousedown', ensureAudio, {once:true});
 
+  /* ---------------- orientation lock (best effort; iOS Safari has no API for this at all,
+     so the CSS rotate trick in the stylesheet is what actually keeps the layout landscape there;
+     this only helps on browsers that DO support it, e.g. Android Chrome as an installed PWA). */
+  let orientationLockTried = false;
+  function tryLockOrientation(){
+    if(orientationLockTried) return;
+    orientationLockTried = true;
+    try{
+      if(screen.orientation && screen.orientation.lock){
+        screen.orientation.lock('landscape').catch(()=>{});
+      }
+    }catch(e){}
+  }
+  document.addEventListener('touchstart', tryLockOrientation, {once:true, passive:true});
+  document.addEventListener('mousedown', tryLockOrientation, {once:true});
+
   /* ---------------- wake lock (best effort) ---------------- */
   let wakeLock = null;
   async function requestWakeLock(){
@@ -409,13 +461,15 @@
     step = step || 1;
     const wrap = document.createElement('div');
     wrap.className = 'stepper';
-    const up = document.createElement('div'); up.className='tri up';
+    const upBtn = document.createElement('div'); upBtn.className='tribtn';
+    const up = document.createElement('div'); up.className='tri up'; upBtn.appendChild(up);
     const digit = document.createElement('div'); digit.className='digit'; digit.textContent = pad2(state.setupField[key]);
-    const down = document.createElement('div'); down.className='tri down';
+    const downBtn = document.createElement('div'); downBtn.className='tribtn';
+    const down = document.createElement('div'); down.className='tri down'; downBtn.appendChild(down);
     const unit = document.createElement('div'); unit.className='unit'; unit.textContent = label;
-    up.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]+step) % (max+1); digit.textContent = pad2(state.setupField[key]); });
-    down.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]-step+ (max+1)) % (max+1); digit.textContent = pad2(state.setupField[key]); });
-    wrap.appendChild(up); wrap.appendChild(digit); wrap.appendChild(down); wrap.appendChild(unit);
+    upBtn.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]+step) % (max+1); digit.textContent = pad2(state.setupField[key]); });
+    downBtn.addEventListener('click', ()=>{ state.setupField[key] = (state.setupField[key]-step+ (max+1)) % (max+1); digit.textContent = pad2(state.setupField[key]); });
+    wrap.appendChild(upBtn); wrap.appendChild(digit); wrap.appendChild(downBtn); wrap.appendChild(unit);
     container.appendChild(wrap);
   }
 
@@ -565,10 +619,13 @@
     }
   });
 
-  $('secUp').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs += 1000; }});
-  $('secDown').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs = Math.max(0,state.frozenMs-1000); }});
-  $('tenthUp').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs += 100; }});
-  $('tenthDown').addEventListener('click',(e)=>{ e.stopPropagation(); if(state.runPhase==='stopped'){ state.frozenMs = Math.max(0,state.frozenMs-100); }});
+  // Adjustment arrows only do something once the watch is stopped. While it's still running we
+  // deliberately do NOT stop propagation, so tapping anywhere in the running screen - including
+  // on top of these arrow zones - stops the stopwatch (the whole screen is the "stop" button).
+  $('secUp').addEventListener('click',(e)=>{ if(state.runPhase==='stopped'){ e.stopPropagation(); state.frozenMs += 1000; }});
+  $('secDown').addEventListener('click',(e)=>{ if(state.runPhase==='stopped'){ e.stopPropagation(); state.frozenMs = Math.max(0,state.frozenMs-1000); }});
+  $('tenthUp').addEventListener('click',(e)=>{ if(state.runPhase==='stopped'){ e.stopPropagation(); state.frozenMs += 100; }});
+  $('tenthDown').addEventListener('click',(e)=>{ if(state.runPhase==='stopped'){ e.stopPropagation(); state.frozenMs = Math.max(0,state.frozenMs-100); }});
 
   $('btnRunDone').addEventListener('click', (e)=>{
     e.stopPropagation();
